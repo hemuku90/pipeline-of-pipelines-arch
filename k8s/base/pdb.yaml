@@ -1,0 +1,57 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pipeline-arch
+  labels:
+    app: pipeline-arch
+    version: v1.0.0
+  annotations:
+    description: "Pipeline Architecture PDB for controlled disruptions"
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pipeline-arch
+      version: v1.0.0
+  # Alternative: use maxUnavailable for canary deployments
+  # maxUnavailable: 1
+  # Unhealthy Pod eviction policy (K8s 1.21+)
+  # unhealthyPodEvictionPolicy: AlwaysAllow
+---
+# PDB for staging - allows more disruption during testing
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pipeline-arch-staging
+  labels:
+    app: pipeline-arch
+    version: v1.0.0
+    environment: staging
+  annotations:
+    description: "Pipeline Architecture PDB for staging"
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pipeline-arch
+      version: v1.0.0
+      environment: staging
+---
+# PDB for production - stricter guarantees
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pipeline-arch-prod
+  labels:
+    app: pipeline-arch
+    version: v1.0.0
+    environment: production
+  annotations:
+    description: "Pipeline Architecture PDB for production"
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: pipeline-arch
+      version: v1.0.0
+      environment: production

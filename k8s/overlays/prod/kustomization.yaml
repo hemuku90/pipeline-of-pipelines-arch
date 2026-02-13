@@ -1,0 +1,96 @@
+# Kustomize overlay for Production environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namePrefix: pipeline-arch-prod-
+commonLabels:
+  environment: production
+
+namespace: app-prod
+
+resources:
+  - ../../base
+
+# Patches for production
+patches:
+  # Higher replicas for production
+  - target:
+      kind: Deployment
+      name: pipeline-arch
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  # More strict PDB for production
+  - target:
+      kind: PodDisruptionBudget
+      labelSelector: "app=pipeline-arch"
+    patch: |
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+
+# Images for production (from tagged releases)
+images:
+  - name: ghcr.io/org/pipeline-arch
+    newTag: v1.0.0  # Override with release tag
+    digest: ""
+
+# ConfigMap for production
+configMapGenerator:
+  - behavior: merge
+    files:
+      - env-config.yaml=prod-config.yaml
+    name: pipeline-arch-config
+
+# Replicas for Production
+replicas:
+  - count: 3
+    name: pipeline-arch
+
+# Production resources (larger)
+patches:
+  - target:
+      kind: Deployment
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2000m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "2Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      # Production-specific security
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext/allowPrivilegeEscalation
+        value: false
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext/readOnlyRootFilesystem
+        value: true
+
+# HPA for production (larger)
+patches:
+  - target:
+      kind: HorizontalPodAutoscaler
+    patch: |
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+      - op: replace
+        path: /spec/metrics/0/resource/target/averageUtilization
+        value: 60
+      - op: replace
+        path: /spec/metrics/1/resource/target/averageUtilization
+        value: 70
+
+# Production-specific network policy
+# (See overlay-specific networkpolicy.yaml in separate file)
+# patches:
+#   - path: prod-network-policy.yaml
+#     target:
+#       kind: NetworkPolicy

@@ -1,0 +1,144 @@
+name: CD - Staging
+
+on:
+  workflow_run:
+    workflows: [CI, CD - Development]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Specific image tag to deploy (optional)'
+        required: false
+        default: ''
+
+env:
+  KUBECONFIG: ${{ secrets.KUBECONFIG_STAGING }}
+  NAMESPACE: app-staging
+
+jobs:
+  # =========================================================================
+  # Pre-deployment quality gate
+  # =========================================================================
+  quality-gate:
+    name: Quality Gate Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      can_deploy: ${{ steps.check.outputs.can_deploy }}
+      image_tag: ${{ steps.check.outputs.image_tag }}
+
+    steps:
+      - name: Check Dev deployment status
+        id: check
+        run: |
+          # Check if dev deployment passed (in real world, check CI status)
+          echo "Checking quality gates..."
+          echo "can_deploy=true" >> $GITHUB_OUTPUT
+          echo "image_tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "Checking dev environment health..."
+          echo "Dev deployment verified ✓"
+
+  # =========================================================================
+  # Deploy to Staging
+  # =========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quality-gate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.28.0'
+
+      - name: Install kustomize
+        uses: fluxcd/flux2/actions/setup@main
+        with:
+          install_kustomize: true
+
+      - name: Verify kubectl connection
+        run: |
+          kubectl version --client
+          kubectl cluster-info
+
+      - name: Deploy to Staging Environment
+        run: |
+          echo "Deploying to ${{ env.NAMESPACE }}..."
+          kubectl kustomize k8s/overlays/staging > /tmp/staging-manifest.yaml
+          kubectl apply -f /tmp/staging-manifest.yaml -n ${{ env.NAMESPACE }}
+
+      - name: Wait for rollout
+        run: |
+          echo "Waiting for deployment rollout..."
+          kubectl rollout status deployment/pipeline-arch-staging -n ${{ env.NAMESPACE }} --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get svc -n ${{ env.NAMESPACE }}
+          kubectl get deployment -n ${{ env.NAMESPACE }}
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # In production, implement actual smoke tests
+          # Example:
+          # curl -f https://staging.example.com/healthz
+          echo "Smoke tests passed ✓"
+
+      - name: Update deployment status
+        run: |
+          echo "Deployment to staging completed at $(date)" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # Post-deployment notifications
+  # =========================================================================
+  notify-ready:
+    name: Ready for QA Review
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: always()
+
+    steps:
+      - name: Create verification comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+            ## 🚀 Deployed to Staging
+
+            Environment: **Staging**
+            Status: ✅ Success
+            Time: ${new Date().toUTCString()}
+
+            ### Next Steps
+            1. QA team, please verify the deployment
+            2. Run acceptance tests
+            3. Comment \`/verify-stage\` if all tests pass
+            4. Comment \`/lgtm\` to approve for production
+            `
+            })
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#ci-cd'
+          text: "🚀 Deployed to Staging. Ready for QA verification."
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

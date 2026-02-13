@@ -1,0 +1,60 @@
+apiVersion: v2
+name: pipeline-arch
+description: |
+  A production-grade REST API application for pipeline orchestration.
+  Includes multi-environment support, auto-scaling, security features,
+  and comprehensive monitoring.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - pipeline
+  - api
+  - golang
+  - kubernetes
+  - automation
+
+home: https://github.com/org/pipeline-arch
+icon: https://example.com/logo.png
+
+maintainers:
+  - name: Platform Team
+    email: platform-team@example.com
+
+sources:
+  - https://github.com/org/pipeline-arch
+
+dependencies:
+  # PostgreSQL dependency (optional)
+  - name: postgresql
+    version: "12.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+    alias: postgresql
+
+  # Redis dependency (optional)
+  - name: redis
+    version: "18.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+    alias: redis
+
+  # External Secrets (optional)
+  - name: external-secrets
+    version: "0.9.x"
+    repository: "https://charts.external-secrets.io"
+    condition: external-secrets.enabled
+    alias: external-secrets
+
+annotations:
+  artifacthub.io/category: database
+  artifacthub.io/license: MIT
+  artifacthub.io/operator: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/signKey: |
+    fingerprint: XXXX
+    url: https://example.com/gpg-key.asc
+  artifacthub.io/images: |
+    - image: ghcr.io/org/pipeline-arch:latest
+      description: Main application image

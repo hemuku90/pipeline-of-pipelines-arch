@@ -1,0 +1,11 @@
+# Production environment configuration
+APP_ENV: "production"
+LOG_LEVEL: "warn"
+FEATURE_RATE_LIMITING: "true"
+FEATURE_CIRCUIT_BREAKER: "true"
+DATABASE_POOL_SIZE: "25"
+REDIS_POOL_SIZE: "20"
+HEALTH_CHECK_DB_TIMEOUT: "3s"
+CORS_ALLOWED_ORIGINS: "https://example.com,https://www.example.com"
+RATE_LIMIT_REQUESTS_PER_MINUTE: "1000"
+MIDDLEWARE_REQUEST_TIMEOUT: "10s"

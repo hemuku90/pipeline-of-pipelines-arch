@@ -1,0 +1,8 @@
+# Development environment configuration
+APP_ENV: "development"
+LOG_LEVEL: "debug"
+FEATURE_RATE_LIMITING: "false"
+FEATURE_CIRCUIT_BREAKER: "false"
+DATABASE_POOL_SIZE: "5"
+REDIS_POOL_SIZE: "5"
+HEALTH_CHECK_DB_TIMEOUT: "10s"

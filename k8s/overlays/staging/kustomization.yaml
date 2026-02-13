@@ -1,0 +1,79 @@
+# Kustomize overlay for Staging environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namePrefix: pipeline-arch-staging-
+commonLabels:
+  environment: staging
+
+namespace: app-staging
+
+resources:
+  - ../../base
+
+# Patches for staging
+patches:
+  # More replicas for staging
+  - target:
+      kind: Deployment
+      name: pipeline-arch
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  # PDB for staging
+  - target:
+      kind: PodDisruptionBudget
+      labelSelector: "app=pipeline-arch"
+    patch: |
+      - op: replace
+        path: /spec/minAvailable
+        value: 1
+
+# Images for staging (usually from main branch latest)
+images:
+  - name: ghcr.io/org/pipeline-arch
+    newTag: staging-$(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
+    digest: ""
+
+# ConfigMap for staging
+configMapGenerator:
+  - behavior: merge
+    files:
+      - env-config.yaml=staging-config.yaml
+    name: pipeline-arch-config
+
+# Replicas for Staging
+replicas:
+  - count: 2
+    name: pipeline-arch
+
+# Staging resources (medium)
+patches:
+  - target:
+      kind: Deployment
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+
+# HPA for staging (medium)
+patches:
+  - target:
+      kind: HorizontalPodAutoscaler
+    patch: |
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5
+      - op: replace
+        path: /spec/metrics/0/resource/target/averageUtilization
+        value: 70

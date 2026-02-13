@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipeline-arch-config
+  labels:
+    app: pipeline-arch
+    version: v1.0.0
+  annotations:
+    description: "Pipeline Architecture Application Configuration"
+data:
+  # Application configuration
+  APP_ENV: ""  # Will be set by overlay
+  APP_HOST: "0.0.0.0"
+  APP_PORT: "8080"
+  METRICS_PORT: "9090"
+  
+  # Logging configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Database configuration (connection string in secret)
+  DATABASE_POOL_SIZE: "10"
+  DATABASE_MAX_CONN_LIFETIME: "30m"
+  DATABASE_MAX_CONN_IDLE_TIME: "5m"
+  
+  # Redis configuration
+  REDIS_POOL_SIZE: "10"
+  REDIS_MIN_IDLE_CONNS: "5"
+  
+  # Rate limiting (if enabled)
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+  
+  # CORS configuration
+  CORS_ALLOWED_ORIGINS: "*"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  CORS_ALLOWED_HEADERS: "Accept,Authorization,Content-Type,X-CSRF-Token,X-Request-ID"
+  
+  # Middleware configuration
+  MIDDLEWARE_REQUEST_TIMEOUT: "30s"
+  MIDDLEWARE_SHUTDOWN_TIMEOUT: "10s"
+  
+  # Health check configuration
+  HEALTH_CHECK_DB_TIMEOUT: "5s"
+  HEALTH_CHECK_CACHE_TIMEOUT: "1s"
+  
+  # Feature flags
+  FEATURE_RATE_LIMITING: "false"
+  FEATURE_CIRCUIT_BREAKER: "true"
+  FEATURE_REQUEST_LOGGING: "true"
+---
+# Additional environment-specific config can be added via overlays
+# Example for staging:
+# data:
+#   LOG_LEVEL: "debug"
+#   FEATURE_RATE_LIMITING: "true"
+#   APP_ENV: "staging"
+# Example for production:
+# data:
+#   LOG_LEVEL: "warn"
+#   CORS_ALLOWED_ORIGINS: "https://example.com"
+#   FEATURE_RATE_LIMITING: "true"

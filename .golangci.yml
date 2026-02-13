@@ -1,0 +1,108 @@
+# =============================================================================
+# golangci-lint Configuration
+# =============================================================================
+# Linter configuration for Pipeline Architecture project
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+    - third_party
+    - docs
+    - .git
+  skip-files:
+    - ".*\\.pb\\.go$"  # Protocol buffer generated files
+    - ".*\\.mock\\.go$"  # Mock files
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - dupl
+    - goconst
+    - gocyclo
+    - gosec
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+    - whitespace
+    - wsl
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    check-shadowing: true
+    enable-all: true
+
+  gocyclo:
+    min-complexity: 15
+
+  dupl:
+    threshold: 100
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  goimports:
+    local-prefixes: github.com/pipeline-arch/app
+
+  whitespace:
+    multi-if: true
+    multi-func: true
+
+  wsl:
+    strict: true
+
+  gosec:
+    excludes:
+      - G107  # Url often appears in code
+      - G204  # Subprocess launched
+      - G404  # Random number generator
+
+  staticcheck:
+    checks:
+      - "all"
+      - "-SA1019"  # Deprecated, but still valid for migration
+      - "-SA5011"  # Possible nil pointer dereference
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - gosec
+
+    - path: vendor/
+      linters:
+        - goimports
+
+    - path: mocks/
+      linters:
+        - dupl
+
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false

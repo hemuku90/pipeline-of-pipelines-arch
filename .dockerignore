@@ -1,0 +1,95 @@
+# =============================================================================
+# Docker Build Context Ignore Rules
+# =============================================================================
+# Files and directories that should not be included in Docker build context
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+*/bin/
+build/
+out/
+coverage.txt
+*.coverprofile
+
+# Test files and reports
+tests/
+*_test.go
+_test/
+test-reports/
+junit*.xml
+*.log
+
+# Documentation
+docs/
+*.md
+LICENSE
+README.md
+
+# CI/CD
+.github/
+.circleci/
+.gitlab-ci.yml
+Jenkinsfile
+azure-pipelines.yml
+
+# Kubernetes and Helm
+k8s/
+helm/
+*.kubeconfig
+kubeconfig
+
+# Terraform and infrastructure
+terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Local development files
+.env
+.env.*
+.local/
+tmp/
+.temp/
+
+# Generated files
+*.generated.go
+mocks/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Dependency files (should be handled by go mod)
+vendor/  # Not needed with multi-stage build
+
+# Container-related
+docker-compose*.yml
+Dockerfile*
+.docker/
+
+# Secrets - NEVER include in build context
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# IDE files
+.notes
+.todo

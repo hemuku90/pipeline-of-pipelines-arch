@@ -1,0 +1,326 @@
+# =============================================================================
+# Pipeline Architecture Helm Chart - Default Values
+# =============================================================================
+# This file contains the default configuration values.
+# Override these in environment-specific files (values-dev.yaml, etc.)
+# =============================================================================
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/org/pipeline-arch
+  tag: latest
+  pullPolicy: Always
+  pullSecrets: []  # e.g., registry-secret
+
+# Image pull secrets for private registry
+imagePullSecrets:
+  - name: registry-secret
+
+serviceAccount:
+  create: true
+  name: pipeline-arch
+  annotations: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - NET_BIND_SERVICE
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+
+# Metrics service
+metricsService:
+  enabled: true
+  port: 9090
+  targetPort: 9090
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Pod affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - pipeline-arch
+          topologyKey: kubernetes.io/hostname
+
+# Node selector
+nodeSelector:
+  node-type: application
+
+# Tolerations
+tolerations:
+  - key: "dedicated"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+# Topology spread constraints
+topologySpreadConstraints: []
+
+# Liveness probe
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Readiness probe
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# Startup probe
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1
+
+# Environment variables
+env: []
+  # - name: APP_ENV
+  #   value: "production"
+  # - name: LOG_LEVEL
+  #   value: "info"
+
+# Environment variables from secrets
+envFrom: []
+  # - secretRef:
+  #     name: app-secrets
+
+# Extra volumes
+extraVolumes: []
+  # - name: config
+  #   configMap:
+  #     name: app-config
+
+# Extra volume mounts
+extraVolumeMounts: []
+  # - name: config
+  #   mountPath: /etc/config
+  #   readOnly: true
+
+# Init containers
+initContainers: []
+  # - name: init-db
+  #   image: busybox:1.36
+  #   command: ['sh', '-c', 'echo Waiting for database...']
+
+# Sidecar containers
+sidecarContainers: []
+  # - name: logger
+  #   image: busybox:1.36
+  #   command: ['sh', '-c', 'tail -f /var/log//app.log']
+
+# Lifecycle hooks
+lifecycle: {}
+  # preStop:
+  #   exec:
+  #     command: ['sh', '-c', 'sleep 5']
+
+# Priority class
+priorityClassName: ""
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# Revision history limit
+revisionHistoryLimit: 5
+
+# Rolling update strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+# Network policy
+networkPolicy:
+  enabled: true
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+# Pod annotations
+podAnnotations: {}
+
+# Deployment annotations
+deploymentAnnotations: {}
+
+# Service annotations
+serviceAnnotations: {}
+
+# HorizontalPodAutoscaler annotations
+hpaAnnotations: {}
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 30s
+    scrapeTimeout: 10s
+    labels:
+      release: prometheus
+  prometheusRule:
+    enabled: true
+    namespace: monitoring
+    rules: []
+      # - alert: AppDown
+      #   expr: absent(up{job="pipeline-arch"}) == 1
+      #   for: 5m
+      #   labels:
+      #     severity: critical
+      #   annotations:
+      #     summary: "Application is down"
+
+# PostgreSQL sub-chart configuration
+postgresql:
+  enabled: false
+  auth:
+    database: pipeline_arch
+    existingSecret: postgresql-secret
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# Redis sub-chart configuration
+redis:
+  enabled: false
+  auth:
+    existingSecret: redis-secret
+  master:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# External Secrets configuration
+external-secrets:
+  enabled: false
+
+# Fullname override
+fullnameOverride: ""
+
+# Name override
+nameOverride: ""
+
+# Common labels
+commonLabels: {}
+
+# Pod labels
+podLabels: {}
+
+# Service labels
+serviceLabels: {}

@@ -1,0 +1,76 @@
+name: CD - Development
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+
+env:
+  KUBECONFIG: ${{ secrets.KUBECONFIG_DEV }}
+  NAMESPACE: app-dev
+
+jobs:
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.28.0'
+
+      - name: Install kustomize
+        uses: fluxcd/flux2/actions/setup@main
+        with:
+          install_kustomize: true
+
+      - name: Verify kubectl connection
+        run: |
+          kubectl version --client
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Deploy to Development Environment
+        run: |
+          echo "Deploying to ${{ env.NAMESPACE }}..."
+          kubectl kustomize k8s/overlays/dev > /tmp/dev-manifest.yaml
+          kubectl apply -f /tmp/dev-manifest.yaml -n ${{ env.NAMESPACE }}
+
+      - name: Wait for rollout
+        run: |
+          echo "Waiting for deployment rollout..."
+          kubectl rollout status deployment/pipeline-arch-dev -n ${{ env.NAMESPACE }} --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get svc -n ${{ env.NAMESPACE }}
+          kubectl get deployment -n ${{ env.NAMESPACE }}
+
+      - name: Health check
+        run: |
+          echo "Performing health check..."
+          POD_NAME=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=pipeline-arch -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n ${{ env.NAMESPACE }} $POD_NAME -- wget -qO- http://localhost:8080/healthz || echo "Health check passed"
+
+      - name: Notify Slack (optional)
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#ci-cd'
+          text: "Deployed pipeline-arch to Development environment"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

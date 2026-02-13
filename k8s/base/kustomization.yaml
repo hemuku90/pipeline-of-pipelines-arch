@@ -1,0 +1,77 @@
+# Kubernetes Kustomize base configuration for Pipeline Architecture
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Metadata
+namePrefix: pipeline-arch-
+commonLabels:
+  app: pipeline-arch
+  version: v1.0.0
+  tier: backend
+
+# Namespace (overridden in overlays)
+namespace: app
+
+# Resources to include
+resources:
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - configmap.yaml
+  - secret.yaml
+  - serviceaccount.yaml
+
+# ConfigMapGenerator for environment-specific configs
+configMapGenerator:
+  - files:
+      - app-config.yaml
+    name: app-config
+    options:
+      disableNameSuffixHash: true
+
+# SecretGenerator (use with caution - prefer External Secrets in production)
+# secretGenerator:
+#   - files:
+#       - secret.txt
+#     name: app-secrets
+#     type: Opaque
+#     options:
+#       disableNameSuffixHash: true
+
+# Reusable patches
+patches:
+  - path: replica-patch.yaml
+    target:
+      kind: Deployment
+      labelSelector: "app=pipeline-arch"
+  # - path: resource-limits-patch.yaml
+  #   target:
+  #     kind: Deployment
+  #     labelSelector: "app=pipeline-arch"
+
+# Images to update
+images:
+  - name: ghcr.io/org/pipeline-arch
+    newTag: latest
+    digest: ""
+
+# Common annotations
+commonAnnotations:
+  maintainer: "platform-team@example.com"
+  owned-by: "platform-engineering"
+
+# Helm-like configuration for resources
+# See: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/replicas/
+replicas:
+  - name: pipeline-arch
+    count: 1
+
+# Configuration for built-in generators
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    managed-by: kustomize
+  annotations:
+    kustomize.generated-by: kustomize
